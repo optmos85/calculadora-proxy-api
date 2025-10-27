@@ -8,8 +8,21 @@ const app = express();
 const PORT = process.env.PORT || 3001; // Porta padrão para serviços de hospedagem
 
 // Middleware para permitir que o seu site acesse esta API
+const allowedOrigins = [
+  'https://www.contabilidademaster.com.br', // Versão com WWW
+  'https://contabilidademaster.com.br'      // Versão SEM WWW
+];
+
 app.use(cors({
-  origin: 'https://www.contabilidademaster.com.br' // Apenas seu site pode usar a API
+  origin: function (origin, callback) {
+    // Se a origem do pedido estiver na nossa lista, permita.
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // Se não estiver, bloqueie.
+      callback(new Error('Acesso não permitido pela política de CORS'));
+    }
+  }
 }));
 
 // Middleware para entender o formato JSON que o seu site enviará
