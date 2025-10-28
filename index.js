@@ -1,60 +1,72 @@
-// index.js - O coração da nossa API Proxy
+// ARQUIVO: index.js (VERSÃO ATUALIZADA)
 
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3001; // Porta padrão para serviços de hospedagem
+const PORT = process.env.PORT || 3001;
 
-// Middleware para permitir que o seu site acesse esta API
+// Lista de origens permitidas (com e sem www)
 const allowedOrigins = [
-  'https://www.contabilidademaster.com.br', // Versão com WWW
-  'https://contabilidademaster.com.br'      // Versão SEM WWW
+  'https://www.contabilidademaster.com.br',
+  'https://contabilidademaster.com.br'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Se a origem do pedido estiver na nossa lista, permita.
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      // Se não estiver, bloqueie.
       callback(new Error('Acesso não permitido pela política de CORS'));
     }
   }
 }));
 
-// Middleware para entender o formato JSON que o seu site enviará
 app.use(express.json());
 
-// O endereço onde o componente da Receita Federal está rodando (DENTRO deste servidor)
-// Assumimos que ele rodará em localhost:8080 no mesmo ambiente que esta API
-const RFB_CALCULATOR_URL = 'https://jona-postcruciate-unsufferably.ngrok-free.dev/calculadora-cbs-ibs/v1/calcular';
+// --- ENDPOINTS DA CALCULADORA DA RECEITA FEDERAL ---
+// ATENÇÃO: Verifique na documentação da RFB se estes caminhos estão corretos!
+const RFB_BASE_URL = 'https://jona-postcruciate-unsufferably.ngrok-free.dev'; // Sua URL do ngrok
+const RFB_REGIME_GERAL_URL = `${RFB_BASE_URL}/calculadora-cbs-ibs/v1/calcular`;
+const RFB_PEDAGIO_URL = `${RFB_BASE_URL}/calculadora-cbs-ibs/v1/calcular-pedagio`; // << NOVO! Endpoint para Pedágio (suposição)
 
-// A rota principal da nossa API
+// --- ROTA PARA REGIME GERAL (JÁ EXISTENTE) ---
 app.post('/api/calcular', async (req, res) => {
-  console.log('Recebida requisição para cálculo:', req.body);
-
-  // Validação básica dos dados recebidos do frontend
+  console.log('Recebida requisição para /api/calcular:', req.body);
   if (!req.body || typeof req.body.valor !== 'number' || !req.body.regime) {
-    return res.status(400).json({ error: 'Dados inválidos. É necessário enviar "valor" e "regime".' });
+    return res.status(400).json({ error: 'Dados inválidos para Regime Geral.' });
   }
-
   try {
-    // 1. Repassa a requisição para a calculadora da RFB
-    const response = await axios.post(RFB_CALCULATOR_URL, req.body);
-
-    // 2. Retorna a resposta da calculadora da RFB para o seu site
-    console.log('Cálculo realizado com sucesso:', response.data);
+    const response = await axios.post(RFB_REGIME_GERAL_URL, req.body);
+    console.log('Cálculo Regime Geral OK:', response.data);
     res.status(200).json(response.data);
-
   } catch (error) {
-    console.error('Erro ao comunicar com o componente da RFB:', error.message);
-    // 3. Se algo der errado, informa ao seu site
+    console.error('Erro ao comunicar com o componente RFB (Regime Geral):', error.message);
     res.status(502).json({ error: 'O serviço de cálculo está temporariamente indisponível.' });
   }
 });
+
+// --- NOVA ROTA PARA PEDÁGIO ---
+app.post('/api/calcular-pedagio', async (req, res) => {
+    console.log('Recebida requisição para /api/calcular-pedagio:', req.body);
+
+    // Validação dos dados esperados para Pedágio
+    if (!req.body || typeof req.body.valor !== 'number' || !req.body.categoriaVeiculo) {
+        return res.status(400).json({ error: 'Dados inválidos. É necessário enviar "valor" e "categoriaVeiculo".' });
+    }
+
+    try {
+        // Repassa a requisição para o endpoint de pedágio da calculadora da RFB
+        const response = await axios.post(RFB_PEDAGIO_URL, req.body);
+        console.log('Cálculo Pedágio OK:', response.data);
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Erro ao comunicar com o componente RFB (Pedágio):', error.message);
+        res.status(502).json({ error: 'O serviço de cálculo de pedágio está temporariamente indisponível.' });
+    }
+});
+
 
 app.listen(PORT, () => {
   console.log(`API Proxy da calculadora rodando na porta ${PORT}`);
