@@ -30,7 +30,7 @@ app.use(express.json());
 
 // O endereço onde o componente da Receita Federal está rodando (DENTRO deste servidor)
 // Assumimos que ele rodará em localhost:8080 no mesmo ambiente que esta API
-const RFB_CALCULATOR_URL = 'http://localhost:8080/calculadora-cbs-ibs/v1/calcular';
+const RFB_CALCULATOR_URL = 'https://jona-postcruciate-unsufferably.ngrok-free.dev/calculadora-cbs-ibs/v1/calcular';
 
 // A rota principal da nossa API
 app.post('/api/calcular', async (req, res) => {
